@@ -31,6 +31,8 @@ avtMEUMMAPSFileFormat.C
 avtGTCFileFormat.C
 avtADIOS2BaseFileFormat.C
 avtADIOS2SSTFileFormat.C
+avtXGCFileFormat.C
+
 )
 
 INCLUDE_DIRECTORIES(

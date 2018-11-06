@@ -106,22 +106,21 @@ class avtXGCFileFormat : public avtMTMDFileFormat
 
   protected:
     std::shared_ptr<adios2::ADIOS> file, meshFile, diagFile;
-    adios2::IO io;
-    adios2::Engine reader;
+    adios2::IO fileIO, meshIO;
+    adios2::Engine fileReader, meshReader;
     std::map<std::string, adios2::Params> variables, attributes;
+
+    std::string filename;
+    std::string engineType;
 
     // ADIOSFileObject *file, *meshFile, *diagFile;
     // std::string sepFileName;
-    bool initialized, haveSepMesh, haveParticles;
+    bool initialized, haveSepMesh;
     int numNodes, numTris, numPhi, numTimeSteps;
 
 
     void                   Initialize();
-    vtkDataSet            *GetParticleMesh(int, int);
-    vtkDataArray          *GetTurbulence(int ts, int dom);
-    vtkDataArray          *GetSep();
     vtkDataArray          *GetPsi();
-    vtkDataSet            *GetSepMesh();
     vtkDataSet            *GetMesh2D(int ts, int dom);
 
     virtual void           PopulateDatabaseMetaData(avtDatabaseMetaData *, int);
