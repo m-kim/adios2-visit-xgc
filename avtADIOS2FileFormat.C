@@ -123,6 +123,7 @@ ADIOS2_CreateFileFormatInterface(const char * const *list, int nList, int nBlock
         {
           case XGC:
             ffi = avtXGCFileFormat::CreateInterface(list, nList, nBlock);
+            break;
           case GTC:
             ffi = avtGTCFileFormat::CreateInterface(list, nList, nBlock);
             break;
