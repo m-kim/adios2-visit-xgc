@@ -65,7 +65,6 @@ avtXGCFileFormat::Identify(const char *fname)
   adios2::ADIOS adios;
   adios2::IO io(adios.DeclareIO("BP"));
   adios2::Engine reader = io.Open(fname, adios2::Mode::Read);
-  cout << "avtXGCFileFormat::GetMesh " << fname << endl;
 
   std::map<std::string, adios2::Params> variables, attributes;
   variables = io.AvailableVariables();
@@ -247,7 +246,9 @@ avtXGCFileFormat::GetTimes(std::vector<double> &t)
 void
 avtXGCFileFormat::FreeUpResources()
 {
+  if (grid)
     grid->Delete();
+
     grid = NULL;
 }
 
@@ -342,11 +343,12 @@ avtXGCFileFormat::GetMesh(int timestate, const char *meshname)
   //     return GetMesh2D(timestate, domain);
 
   //meshFile->ReadScalarData("/coordinates/values", timestate, &buff);
-  adios2::Variable<float> coordVar = fileIO.InquireVariable<float>("coordinates/values");
+  adios2::Variable<double> coordVar = meshIO.InquireVariable<double>("/coordinates/values");
   if (!coordVar)
       return NULL;
+
   coordVar.SetStepSelection({timestate,1});
-  vector<float> buff;
+  vector<double> buff;
   vector<int> conn, nextNode;
   meshReader.Get(coordVar, buff, adios2::Mode::Sync);
 
@@ -359,8 +361,8 @@ avtXGCFileFormat::GetMesh(int timestate, const char *meshname)
   // meshFile->ReadScalarData("/cell_set[0]/node_connect_list", timestate, &conn);
   // if (!meshFile->ReadScalarData("/nextnode", timestate, &nextNode))
   //     meshFile->ReadScalarData("nextnode", timestate, &nextNode);
-  auto nodeConnectorVar = fileIO.InquireVariable<int>("/cell_set[0]/node_connect_list");
-  auto nextNodeVar = fileIO.InquireVariable<int>("nextnode");
+  auto nodeConnectorVar = meshIO.InquireVariable<int>("/cell_set[0]/node_connect_list");
+  auto nextNodeVar = meshIO.InquireVariable<int>("nextnode");
   if (!nodeConnectorVar || !nextNodeVar)
       return NULL;
   nodeConnectorVar.SetStepSelection({timestate,1});
@@ -494,7 +496,7 @@ avtXGCFileFormat::Initialize()
 
     adios2::Variable<int> nVar = meshIO.InquireVariable<int>("n_n");
     adios2::Variable<int> triVar = meshIO.InquireVariable<int>("n_t");
-    adios2::Variable<int> phiVar = meshIO.InquireVariable<int>("nphi");
+    adios2::Variable<int> phiVar = fileIO.InquireVariable<int>("nphi");
 
     if (nVar){
         meshReader.Get(nVar, &numNodes, adios2::Mode::Sync);
@@ -503,8 +505,10 @@ avtXGCFileFormat::Initialize()
     if (triVar)
         meshReader.Get(triVar, &numTris, adios2::Mode::Sync);
 
-    if (phiVar)
-        meshReader.Get(phiVar, &numPhi, adios2::Mode::Sync);
+    if (phiVar){
+        fileReader.Get(phiVar, &numPhi, adios2::Mode::Sync);
+        cout << "phi: " << numPhi << endl;
+    }
 
 
     initialized = true;
