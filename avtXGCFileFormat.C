@@ -116,9 +116,6 @@ avtXGCFileFormat::avtXGCFileFormat(const char *filename)
       cylGrid(NULL),
       ptGrid(NULL)
 {
-  engineType = "BP";
-  fileIO = adios2::IO(file->DeclareIO(engineType));
-  fileIO.SetEngine(engineType);
 
   fileReader = fileIO.Open(std::string(filename), adios2::Mode::Read);
   if (!fileReader)
@@ -442,6 +439,8 @@ avtXGCFileFormat::GetMesh(int timestate, const char *meshname)
 void
 avtXGCFileFormat::Initialize()
 {
+  if (initialized)
+    return;
     adios2::ADIOS adios;
     adios2::IO bpIO = adios.DeclareIO("BP");
     adios2::Engine bpReader =
@@ -466,10 +465,10 @@ avtXGCFileFormat::Initialize()
     // meshFile->SetResetDimensionOrder();
     // if (! meshFile->Open())
     //     EXCEPTION0(ImproperUseException);
-    meshFile->DeclareIO("BP");
-    meshIO.Open(avtXGCFileFormat::CreateMeshName(fileName), adios2::Mode::Read);
-    if (!meshIO)
+    meshReader = meshIO.Open(avtXGCFileFormat::CreateMeshName(fileName), adios2::Mode::Read);
+    if (!meshReader)
          EXCEPTION0(ImproperUseException);
+
     // string diagNm = avtXGCFileFormat::CreateDiagName(file->Filename());
     // ifstream df(diagNm.c_str());
     // if (df.good())
@@ -494,7 +493,7 @@ avtXGCFileFormat::Initialize()
     //     file->GetScalar("nphi", numPhi);
 
     adios2::Variable<int> nVar = meshIO.InquireVariable<int>("n_n");
-    adios2::Variable<int> triVar = meshIO.InquireVariable<int>("n_n");
+    adios2::Variable<int> triVar = meshIO.InquireVariable<int>("n_t");
     adios2::Variable<int> phiVar = meshIO.InquireVariable<int>("nphi");
 
     if (nVar){
