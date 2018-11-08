@@ -121,6 +121,7 @@ class avtXGCFileFormat : public avtMTSDFileFormat
 
     void                   Initialize();
     vtkDataArray          *GetPsi();
+    vtkDataSet            *GetMesh2D(int ts, int dom);
 
     virtual void           PopulateDatabaseMetaData(avtDatabaseMetaData *, int);
 };

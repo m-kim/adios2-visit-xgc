@@ -339,8 +339,8 @@ avtXGCFileFormat::GetMesh(int timestate, const char *meshname)
 {
   cout << "avtXGCFileFormat::GetMesh " << meshname << endl;
   Initialize();
-  // if (!strcmp(meshname, "mesh2D"))
-  //     return GetMesh2D(timestate, domain);
+   if (!strcmp(meshname, "mesh2D"))
+       return GetMesh2D(timestate, 1);
 
   //meshFile->ReadScalarData("/coordinates/values", timestate, &buff);
   adios2::Variable<double> coordVar = meshIO.InquireVariable<double>("/coordinates/values");
@@ -424,6 +424,71 @@ avtXGCFileFormat::GetMesh(int timestate, const char *meshname)
           grid->InsertNextCell(VTK_WEDGE, 6, wedge);
       }
   }
+  return grid;
+}
+
+
+vtkDataSet *
+avtXGCFileFormat::GetMesh2D(int ts, int dom)
+{
+  std::vector<double> buff;
+  adios2::Variable<double> coordVar = meshIO.InquireVariable<double>("/coordinates/values");
+  if (!coordVar)
+      return NULL;
+
+  meshReader.Get(coordVar, buff,  adios2::Mode::Sync);
+
+  vtkPoints *pts = vtkPoints::New();
+  pts->SetNumberOfPoints(numNodes);
+  vtkUnstructuredGrid *grid = vtkUnstructuredGrid::New();
+  grid->SetPoints(pts);
+
+  vector<int> conn, nextNode;
+
+  auto nodeConnectorVar = meshIO.InquireVariable<int>("/cell_set[0]/node_connect_list");
+  auto nextNodeVar = meshIO.InquireVariable<int>("nextnode");
+  if (!nodeConnectorVar || !nextNodeVar)
+      return NULL;
+  nodeConnectorVar.SetStepSelection({ts,1});
+  nextNodeVar.SetStepSelection({ts,1});
+
+  meshReader.Get(nodeConnectorVar, conn,adios2::Mode::Sync);
+  meshReader.Get(nextNodeVar, nextNode, adios2::Mode::Sync);
+  if (nextNode.size() < 1)
+      return NULL;
+
+  //Create the points.
+  double dPhi = 2.0*M_PI/(double)numPhi;
+  double phi = 0.0;
+  double pt[3];
+  for (int p = 0; p < numNodes; p++)
+  {
+      double R = buff[p*2 +0];
+      double Z = buff[p*2 +1];
+
+      /*
+      pt[0] = R*cos(phi);
+      pt[1] = R*sin(phi);
+      pt[2] = Z;
+      */
+
+      pt[0] = R*cos(phi);
+      pt[2] = R*sin(phi);
+      pt[1] = Z;
+      pts->SetPoint(p, pt);
+  }
+  pts->Delete();
+
+  //Make the wedges.
+  vtkIdType tri[3];
+  for (int p = 0; p < numTris*3; p+=3)
+  {
+      tri[0] = conn[p+0];
+      tri[1] = conn[p+1];
+      tri[2] = conn[p+2];
+      grid->InsertNextCell(VTK_TRIANGLE, 3, tri);
+  }
+
   return grid;
 }
 
