@@ -410,10 +410,6 @@ avtXGCFileFormat::GetMesh(int timestate, const char *meshname)
           int p1 = conn[p+1];
           int p2 = conn[p+2];
 
-          p0 = nextNode[p0];
-          p1 = nextNode[p1];
-          p2 = nextNode[p2];
-
           //Connect back to the first plane.
           if (i == numPhi-1)
               off = 0;
