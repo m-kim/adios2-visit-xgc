@@ -46,7 +46,7 @@
 #include <string>
 #include <map>
 
-#include <vtkFloatArray.h>
+#include <vtkDoubleArray.h>
 #include <vtkUnstructuredGrid.h>
 #include <vtkGenericCell.h>
 
@@ -541,18 +541,18 @@ avtXGCFileFormat::GetVar(int timestate, const char *varname)
       return GetPsi();
 
 
-  adios2::Variable<float> var = fileIO.InquireVariable<float>(varname);
+  adios2::Variable<double> var = fileIO.InquireVariable<double>(varname);
   if (!var)
       return NULL;
 
   auto dims = var.Shape();
 
-  vtkFloatArray *arr = vtkFloatArray::New();
+  vtkDoubleArray *arr = vtkDoubleArray::New();
   arr->SetNumberOfTuples(dims[0]*dims[1]);
 
   var.SetStepSelection({timestate, 1});
   var.SetSelection(adios2::Box<adios2::Dims>({0,0}, dims));
-  fileReader.Get(var, (float*)arr->GetVoidPointer(0), adios2::Mode::Sync);
+  fileReader.Get(var, (double*)arr->GetVoidPointer(0), adios2::Mode::Sync);
 
   return arr;
 }
