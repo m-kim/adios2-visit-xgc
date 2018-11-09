@@ -113,7 +113,8 @@ avtXGCFileFormat::avtXGCFileFormat(const char *filename)
       avtMTSDFileFormat(&filename, 1),
       grid(NULL),
       cylGrid(NULL),
-      ptGrid(NULL)
+      ptGrid(NULL),
+      phiMultiplier(8)
 {
 
   fileReader = fileIO.Open(std::string(filename), adios2::Mode::Read);
@@ -350,10 +351,12 @@ avtXGCFileFormat::GetMesh(int timestate, const char *meshname)
   coordVar.SetStepSelection({timestate,1});
   vector<double> buff;
   vector<int> conn, nextNode;
+  const int newPhi = phiMultiplier * numPhi;
+
   meshReader.Get(coordVar, buff, adios2::Mode::Sync);
 
   vtkPoints *pts = vtkPoints::New();
-  pts->SetNumberOfPoints(numNodes * numPhi);
+  pts->SetNumberOfPoints(numNodes * newPhi);
   vtkUnstructuredGrid *grid = vtkUnstructuredGrid::New();
   grid->SetPoints(pts);
 
@@ -374,29 +377,30 @@ avtXGCFileFormat::GetMesh(int timestate, const char *meshname)
       return NULL;
 
   //Create the points.
-  double dPhi = 2.0*M_PI/(double)numPhi;
-  for (int i = 0; i < numPhi; i++)
+  double dPhi = 2.0*M_PI/(double)newPhi;
+  for (int i = 0; i < newPhi; i++)
   {
       double phi = (double)i * dPhi;
       phi = -phi;
 
       double pt[3];
+
       for (int p = 0; p < numNodes; p++)
       {
-          double R = buff[p*2 +0];
-          double Z = buff[p*2 +1];
+        const double R = buff[p*2 +0];
+        const double Z = buff[p*2 +1];
 
-          pt[0] = R*cos(phi);
-          pt[1] = R*sin(phi);
-          pt[2] = Z;
-          pts->SetPoint(p+i*numNodes, pt);
+        pt[0] = R *cos(phi);
+        pt[1] = R *sin(phi);
+        pt[2] = Z;
+        pts->SetPoint(p+i*numNodes, pt);
       }
   }
   pts->Delete();
 
   //Make the wedges.
   vtkIdType wedge[6];
-  for (int i = 0; i < numPhi; i++)
+  for (int i = 0; i < newPhi; i++)
   {
       for (int p = 0; p < numTris*3; p+=3)
       {
@@ -411,7 +415,7 @@ avtXGCFileFormat::GetMesh(int timestate, const char *meshname)
           int p2 = conn[p+2];
 
           //Connect back to the first plane.
-          if (i == numPhi-1)
+          if (i == newPhi-1)
               off = 0;
 
           wedge[3] = p0 + off;
