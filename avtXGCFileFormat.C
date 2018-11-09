@@ -122,35 +122,42 @@ avtXGCFileFormat::avtXGCFileFormat(const char *filename)
   fileIO.SetEngine(engineType);
   meshIO = adios2::IO(meshFile->DeclareIO(engineType));
   meshIO.SetEngine(engineType);
-
   fileReader = fileIO.Open(std::string(filename), adios2::Mode::Read);
-  if (!fileReader)
-      EXCEPTION1(ImproperUseException, "Invalid file");
 
-  fileVariables = fileIO.AvailableVariables();
-  fileAttributes = fileIO.AvailableAttributes();
-  if (fileVariables.find("dpot") != fileVariables.end())
-      numTimeSteps = std::stoi(fileVariables["dpot"]["AvailableStepsCount"]);
+  if (engineType == "SST")
+  {
+      numTimeSteps = 100000;
+  }
+  else if (engineType == "BP"){
+    if (!fileReader)
+        EXCEPTION1(ImproperUseException, "Invalid file");
 
-  initialized = false;
-  numNodes = 0;
+    fileVariables = fileIO.AvailableVariables();
+    fileAttributes = fileIO.AvailableAttributes();
+    if (fileVariables.find("dpot") != fileVariables.end())
+        numTimeSteps = std::stoi(fileVariables["dpot"]["AvailableStepsCount"]);
 
-  numTris = 0;
+    initialized = false;
+    numNodes = 0;
 
-  numPhi = 0;
+    numTris = 0;
 
-  // file = new ADIOSFileObject(nm);
-  // file->SetResetDimensionOrder();
+    numPhi = 0;
 
-  // meshFile = NULL;
-  // diagFile = NULL;
-  // initialized = false;
-  // haveSepMesh = false;
-  // numNodes = 0;
-  // numTris = 0;
-  // numPhi = 0;
+    // file = new ADIOSFileObject(nm);
+    // file->SetResetDimensionOrder();
 
-  //string str(nm);
+    // meshFile = NULL;
+    // diagFile = NULL;
+    // initialized = false;
+    // haveSepMesh = false;
+    // numNodes = 0;
+    // numTris = 0;
+    // numPhi = 0;
+
+    //string str(nm);
+  }
+
 }
 
 // ****************************************************************************
@@ -278,6 +285,14 @@ avtXGCFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int timeStat
 {
   cout<<"avtXGCFileFormat::PopulateDatabaseMetaData()"<<endl;
   Initialize();
+  if (engineType == "SST")
+  {
+      fileReader.BeginStep(adios2::StepMode::NextAvailable, 0.0f);
+      fileReader.EndStep();
+      meshReader.BeginStep(adios2::StepMode::NextAvailable, 0.0f);
+      meshReader.EndStep();
+  }
+
   md->SetFormatCanDoDomainDecomposition(false);
 
 
@@ -347,8 +362,22 @@ avtXGCFileFormat::GetMesh(int timestate, const char *meshname)
   cout << "avtXGCFileFormat::GetMesh " << meshname << endl;
 
   Initialize();
+  if (engineType == "BP")
+  {
+  }
+  else if (engineType == "SST")
+  {
+      adios2::StepStatus status = fileReader.BeginStep(adios2::StepMode::NextAvailable, 0.0f);
+      if (status != adios2::StepStatus::OK)
+          return NULL;
+      status = meshReader.BeginStep(adios2::StepMode::NextAvailable, 0.0f);
+      if (status != adios2::StepStatus::OK)
+          return NULL;
+  }
+
    if (!strcmp(meshname, "mesh2D"))
        return GetMesh2D(timestate, 1);
+
 
   //meshFile->ReadScalarData("/coordinates/values", timestate, &buff);
   adios2::Variable<double> coordVar = meshIO.InquireVariable<double>("/coordinates/values");
@@ -427,6 +456,12 @@ avtXGCFileFormat::GetMesh(int timestate, const char *meshname)
           wedge[5] = p2 + off;
           grid->InsertNextCell(VTK_WEDGE, 6, wedge);
       }
+  }
+
+  if (engineType == "SST"){
+
+      fileReader.EndStep();
+      meshReader.EndStep();
   }
   grid->Register(NULL);
   return grid;
@@ -513,24 +548,6 @@ avtXGCFileFormat::Initialize()
 {
   if (initialized)
     return;
-    adios2::ADIOS adios;
-    adios2::IO bpIO = adios.DeclareIO(engineType);
-    adios2::Engine bpReader =
-        bpIO.Open(fileName.c_str(), adios2::Mode::Read);
-    const std::map<std::string, adios2::Params> variables =
-        bpIO.AvailableVariables();
-
-    for (const auto variablePair : variables)
-    {
-        std::cout << "Name: " << variablePair.first;
-
-        for (const auto &parameter : variablePair.second)
-        {
-            std::cout << "\t" << parameter.first << ": " << parameter.second
-                        << "\n";
-        }
-    }
-
 
     // //Open the mesh file.
     // meshFile = new ADIOSFileObject(avtXGCFileFormat::CreateMeshName(file->Filename()));
