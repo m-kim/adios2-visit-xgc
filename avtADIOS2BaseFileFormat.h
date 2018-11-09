@@ -68,7 +68,7 @@ class avtADIOS2BaseFileFormat : public avtMTSDFileFormat
                                                    int nBlock);
 
                        avtADIOS2BaseFileFormat(const char *);
-    virtual           ~avtADIOS2BaseFileFormat() {;};
+    virtual           ~avtADIOS2BaseFileFormat();
 
     //
     // This is used to return unconvention data -- ranging from material
