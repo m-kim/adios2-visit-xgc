@@ -42,6 +42,7 @@
 
 #include <avtMTSDFileFormatInterface.h>
 #include <avtXGCFileFormat.h>
+#include <avtADIOS2BaseFileFormat.h>
 
 #include <string>
 #include <map>
@@ -62,21 +63,22 @@ using namespace std;
 bool
 avtXGCFileFormat::Identify(const char *fname)
 {
-  adios2::ADIOS adios;
-  adios2::IO io(adios.DeclareIO("BP"));
-  adios2::Engine reader = io.Open(fname, adios2::Mode::Read);
+  return true;
+//  adios2::ADIOS adios;
+//  adios2::IO io(adios.DeclareIO("BP"));
+//  adios2::Engine reader = io.Open(fname, adios2::Mode::Read);
 
-  std::map<std::string, adios2::Params> variables, attributes;
-  variables = io.AvailableVariables();
-  attributes = io.AvailableAttributes();
+//  std::map<std::string, adios2::Params> variables, attributes;
+//  variables = io.AvailableVariables();
+//  attributes = io.AvailableAttributes();
 
-  int vfind = 0;
-  vector<string> reqVars = {"dpot"};
-  for (auto vi = variables.begin(); vi != variables.end(); vi++)
-      if (std::find(reqVars.begin(), reqVars.end(), vi->first) != reqVars.end())
-          return true;
+//  int vfind = 0;
+//  vector<string> reqVars = {"dpot"};
+//  for (auto vi = variables.begin(); vi != variables.end(); vi++)
+//      if (std::find(reqVars.begin(), reqVars.end(), vi->first) != reqVars.end())
+//          return true;
 
-  return vfind==reqVars.size();
+//  return vfind==reqVars.size();
 }
 
 avtFileFormatInterface *
@@ -105,17 +107,21 @@ avtXGCFileFormat::CreateInterface(const char *const *list,
 
 avtXGCFileFormat::avtXGCFileFormat(const char *filename)
     : file(std::make_shared<adios2::ADIOS>(adios2::DebugON)),
-      fileIO(file->DeclareIO("BP")),
       meshFile(std::make_shared<adios2::ADIOS>(adios2::DebugON)),
-      meshIO(meshFile->DeclareIO("BP")),
-      numTimeSteps(1),
       fileName(filename),
+      engineType(avtADIOS2BaseFileFormat::getEngineType(filename)),
+      numTimeSteps(1),
       avtMTSDFileFormat(&filename, 1),
       grid(NULL),
       cylGrid(NULL),
       ptGrid(NULL),
       phiMultiplier(8)
 {
+
+  fileIO = adios2::IO(file->DeclareIO(engineType));
+  fileIO.SetEngine(engineType);
+  meshIO = adios2::IO(meshFile->DeclareIO(engineType));
+  meshIO.SetEngine(engineType);
 
   fileReader = fileIO.Open(std::string(filename), adios2::Mode::Read);
   if (!fileReader)
@@ -508,7 +514,7 @@ avtXGCFileFormat::Initialize()
   if (initialized)
     return;
     adios2::ADIOS adios;
-    adios2::IO bpIO = adios.DeclareIO("BP");
+    adios2::IO bpIO = adios.DeclareIO(engineType);
     adios2::Engine bpReader =
         bpIO.Open(fileName.c_str(), adios2::Mode::Read);
     const std::map<std::string, adios2::Params> variables =

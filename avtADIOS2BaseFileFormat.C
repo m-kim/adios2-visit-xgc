@@ -114,7 +114,8 @@ avtADIOS2BaseFileFormat::CreateInterface(const char *const *list,
     return new avtMTSDFileFormatInterface(ffl, nTimestepGroups, nBlock);
 }
 
-static const string getEngineType(const string &fname)
+const string
+avtADIOS2BaseFileFormat::getEngineType(const string &fname)
 {
     if (fname.find(".bp.sst") != string::npos)
         return "SST";
@@ -122,7 +123,7 @@ static const string getEngineType(const string &fname)
         return "BP";
 }
 
-static const string getFile(const string &fname)
+const string avtADIOS2BaseFileFormat::getFile(const string &fname)
 {
     if (fname.find(".bp.sst") != string::npos)
         return fname.substr(0, fname.size()-4);

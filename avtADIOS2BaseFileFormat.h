@@ -66,6 +66,8 @@ class avtADIOS2BaseFileFormat : public avtMTSDFileFormat
     static avtFileFormatInterface *CreateInterface(const char *const *list,
                                                    int nList,
                                                    int nBlock);
+    static const std::string getEngineType(const std::string &fname);
+    static const std::string getFile(const std::string &fname);
 
                        avtADIOS2BaseFileFormat(const char *);
     virtual           ~avtADIOS2BaseFileFormat();
