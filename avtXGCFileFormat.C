@@ -123,8 +123,8 @@ avtXGCFileFormat::avtXGCFileFormat(const char *filename)
 
   fileVariables = fileIO.AvailableVariables();
   fileAttributes = fileIO.AvailableAttributes();
-  if (fileVariables.find("pot0") != fileVariables.end())
-      numTimeSteps = std::stoi(fileVariables["pot0"]["AvailableStepsCount"]);
+  if (fileVariables.find("dpot") != fileVariables.end())
+      numTimeSteps = std::stoi(fileVariables["dpot"]["AvailableStepsCount"]);
 
   initialized = false;
   numNodes = 0;
@@ -339,6 +339,7 @@ vtkDataSet *
 avtXGCFileFormat::GetMesh(int timestate, const char *meshname)
 {
   cout << "avtXGCFileFormat::GetMesh " << meshname << endl;
+
   Initialize();
    if (!strcmp(meshname, "mesh2D"))
        return GetMesh2D(timestate, 1);
@@ -348,7 +349,6 @@ avtXGCFileFormat::GetMesh(int timestate, const char *meshname)
   if (!coordVar)
       return NULL;
 
-  coordVar.SetStepSelection({timestate,1});
   vector<double> buff;
   vector<int> conn, nextNode;
   const int newPhi = phiMultiplier * numPhi;
@@ -357,7 +357,7 @@ avtXGCFileFormat::GetMesh(int timestate, const char *meshname)
 
   vtkPoints *pts = vtkPoints::New();
   pts->SetNumberOfPoints(numNodes * newPhi);
-  vtkUnstructuredGrid *grid = vtkUnstructuredGrid::New();
+  grid = vtkUnstructuredGrid::New();
   grid->SetPoints(pts);
 
   //vtkDataArray *conn = NULL, *nextNode = NULL;
@@ -368,8 +368,6 @@ avtXGCFileFormat::GetMesh(int timestate, const char *meshname)
   auto nextNodeVar = meshIO.InquireVariable<int>("nextnode");
   if (!nodeConnectorVar || !nextNodeVar)
       return NULL;
-  nodeConnectorVar.SetStepSelection({timestate,1});
-  nextNodeVar.SetStepSelection({timestate,1});
 
   meshReader.Get(nodeConnectorVar, conn,adios2::Mode::Sync);
   meshReader.Get(nextNodeVar, nextNode, adios2::Mode::Sync);
@@ -424,6 +422,7 @@ avtXGCFileFormat::GetMesh(int timestate, const char *meshname)
           grid->InsertNextCell(VTK_WEDGE, 6, wedge);
       }
   }
+  grid->Register(NULL);
   return grid;
 }
 
