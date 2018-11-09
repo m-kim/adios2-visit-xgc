@@ -612,12 +612,23 @@ avtXGCFileFormat::GetVar(int timestate, const char *varname)
 
   auto dims = var.Shape();
 
+  vector<double> buff;
   vtkDoubleArray *arr = vtkDoubleArray::New();
-  arr->SetNumberOfTuples(dims[0]*dims[1]);
+  arr->SetNumberOfTuples(dims[0]*dims[1] * phiMultiplier);
 
   var.SetStepSelection({timestate, 1});
   var.SetSelection(adios2::Box<adios2::Dims>({0,0}, dims));
-  fileReader.Get(var, (double*)arr->GetVoidPointer(0), adios2::Mode::Sync);
+  fileReader.Get(var, buff, adios2::Mode::Sync);// (double*)arr->GetVoidPointer(0), adios2::Mode::Sync);
+
+  const double dx = 1.0/static_cast<double>(phiMultiplier);
+  for (int j=0; j<phiMultiplier; j++){
+    for (int i=0; i<buff.size(); i++){
+      arr->SetTuple1(j*buff.size() + i,
+                     buff[i] * (1.0-static_cast<double>(j)*dx)
+                     + buff[(i+1)%(buff.size()-1)] * static_cast<double>(j)*dx);
+
+    }
+  }
 
   return arr;
 }
