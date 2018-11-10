@@ -115,48 +115,57 @@ avtXGCFileFormat::avtXGCFileFormat(const char *filename)
       grid(NULL),
       cylGrid(NULL),
       ptGrid(NULL),
+      initialized(false),
+      numNodes(0),
+      numTris(0),
+      numPhi(0),
       phiMultiplier(8)
 {
 
   fileIO = adios2::IO(file->DeclareIO(engineType));
   fileIO.SetEngine(engineType);
-  meshIO = adios2::IO(meshFile->DeclareIO(engineType));
-  meshIO.SetEngine(engineType);
-  fileReader = fileIO.Open(std::string(filename), adios2::Mode::Read);
+  meshIO = adios2::IO(meshFile->DeclareIO("BP"));
+  meshIO.SetEngine("BP");
+
+  if (engineType == "SST"){
+    //ADIOS2 appends .sst to filename, need to remove .sst for xgc. *shrug*
+    //ADIOS2::sst::cp::cp_reader.c: snprintf(FileName, len, "%s" SST_POSTFIX, Name);
+    fileName = fileName.substr(0, fileName.size()-4);
+
+  }
+
+
+  fileReader = fileIO.Open(fileName, adios2::Mode::Read);
+
+  const std::map<std::string, adios2::Params> variables =
+      fileIO.AvailableVariables();
+
+  for (const auto variablePair : variables)
+  {
+      std::cout << "Name: " << variablePair.first;
+
+      for (const auto &parameter : variablePair.second)
+      {
+          std::cout << "\t" << parameter.first << ": " << parameter.second
+                      << "\n";
+      }
+  }
 
   if (engineType == "SST")
   {
+    fileReader.BeginStep();
+
       numTimeSteps = 100000;
   }
   else if (engineType == "BP"){
     if (!fileReader)
         EXCEPTION1(ImproperUseException, "Invalid file");
-
-    fileVariables = fileIO.AvailableVariables();
-    fileAttributes = fileIO.AvailableAttributes();
-    if (fileVariables.find("dpot") != fileVariables.end())
-        numTimeSteps = std::stoi(fileVariables["dpot"]["AvailableStepsCount"]);
-
-    initialized = false;
-    numNodes = 0;
-
-    numTris = 0;
-
-    numPhi = 0;
-
-    // file = new ADIOSFileObject(nm);
-    // file->SetResetDimensionOrder();
-
-    // meshFile = NULL;
-    // diagFile = NULL;
-    // initialized = false;
-    // haveSepMesh = false;
-    // numNodes = 0;
-    // numTris = 0;
-    // numPhi = 0;
-
-    //string str(nm);
   }
+  fileVariables = fileIO.AvailableVariables();
+  fileAttributes = fileIO.AvailableAttributes();
+
+  if (engineType == "SST")
+    fileReader.EndStep();
 
 }
 
@@ -288,9 +297,21 @@ avtXGCFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int timeStat
   if (engineType == "SST")
   {
       fileReader.BeginStep(adios2::StepMode::NextAvailable, 0.0f);
-      fileReader.EndStep();
-      meshReader.BeginStep(adios2::StepMode::NextAvailable, 0.0f);
-      meshReader.EndStep();
+
+
+//      const std::map<std::string, adios2::Params> variables =
+//          fileIO.AvailableVariables();
+
+//      for (const auto variablePair : variables)
+//      {
+//          std::cout << "Name: " << variablePair.first;
+
+//          for (const auto &parameter : variablePair.second)
+//          {
+//              std::cout << "\t" << parameter.first << ": " << parameter.second
+//                          << "\n";
+//          }
+//      }
   }
 
   md->SetFormatCanDoDomainDecomposition(false);
@@ -344,6 +365,9 @@ avtXGCFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int timeStat
       md->Add(smd);
   }
 
+  if (engineType == "SST")
+    fileReader.EndStep();
+
 //  if (diagFile.get())
 //      AddScalarVarToMetaData(md, "turbulence", "mesh", AVT_NODECENT);
 }
@@ -362,18 +386,15 @@ avtXGCFileFormat::GetMesh(int timestate, const char *meshname)
   cout << "avtXGCFileFormat::GetMesh " << meshname << endl;
 
   Initialize();
-  if (engineType == "BP")
-  {
-  }
-  else if (engineType == "SST")
-  {
-      adios2::StepStatus status = fileReader.BeginStep(adios2::StepMode::NextAvailable, 0.0f);
-      if (status != adios2::StepStatus::OK)
-          return NULL;
-      status = meshReader.BeginStep(adios2::StepMode::NextAvailable, 0.0f);
-      if (status != adios2::StepStatus::OK)
-          return NULL;
-  }
+//  if (engineType == "BP")
+//  {
+//  }
+//  else if (engineType == "SST")
+//  {
+//      adios2::StepStatus status = fileReader.BeginStep(adios2::StepMode::NextAvailable, 0.0f);
+//      if (status != adios2::StepStatus::OK)
+//          return NULL;
+//  }
 
    if (!strcmp(meshname, "mesh2D"))
        return GetMesh2D(timestate, 1);
@@ -458,11 +479,6 @@ avtXGCFileFormat::GetMesh(int timestate, const char *meshname)
       }
   }
 
-  if (engineType == "SST"){
-
-      fileReader.EndStep();
-      meshReader.EndStep();
-  }
   grid->Register(NULL);
   return grid;
 }
@@ -548,15 +564,33 @@ avtXGCFileFormat::Initialize()
 {
   if (initialized)
     return;
-
+  if (engineType == "SST")
+  {
+      fileReader.BeginStep(adios2::StepMode::NextAvailable, 0.0f);
+  }
     // //Open the mesh file.
     // meshFile = new ADIOSFileObject(avtXGCFileFormat::CreateMeshName(file->Filename()));
     // meshFile->SetResetDimensionOrder();
     // if (! meshFile->Open())
     //     EXCEPTION0(ImproperUseException);
-    meshReader = meshIO.Open(avtXGCFileFormat::CreateMeshName(fileName), adios2::Mode::Read);
+    meshName = avtXGCFileFormat::CreateMeshName(fileName);
+    meshReader = meshIO.Open(meshName, adios2::Mode::Read);
     if (!meshReader)
          EXCEPTION0(ImproperUseException);
+
+//    const std::map<std::string, adios2::Params> variables =
+//        meshIO.AvailableVariables();
+
+//    for (const auto variablePair : variables)
+//    {
+//        std::cout << "Mesh Name: " << variablePair.first;
+
+//        for (const auto &parameter : variablePair.second)
+//        {
+//            std::cout << "\t" << parameter.first << ": " << parameter.second
+//                        << "\n";
+//        }
+//    }
 
     // string diagNm = avtXGCFileFormat::CreateDiagName(file->Filename());
     // ifstream df(diagNm.c_str());
@@ -598,6 +632,9 @@ avtXGCFileFormat::Initialize()
     }
 
 
+    if (engineType == "SST")
+      fileReader.EndStep();
+
     initialized = true;
 }
 // ****************************************************************************
@@ -624,9 +661,19 @@ avtXGCFileFormat::GetVar(int timestate, const char *varname)
   cout << "avtXGCFileFormat::GetVar " << varname << endl;
   Initialize();
 
+
   if (!strcmp(varname, "psi"))
       return GetPsi();
 
+  if (engineType == "BP")
+  {
+  }
+  else if (engineType == "SST")
+  {
+      adios2::StepStatus status = fileReader.BeginStep(adios2::StepMode::NextAvailable, 0.0f);
+      if (status != adios2::StepStatus::OK)
+          return NULL;
+  }
 
   adios2::Variable<double> var = fileIO.InquireVariable<double>(varname);
   if (!var)
@@ -651,6 +698,9 @@ avtXGCFileFormat::GetVar(int timestate, const char *varname)
 
     }
   }
+
+  if (engineType == "SST")
+      fileReader.EndStep();
 
   return arr;
 }

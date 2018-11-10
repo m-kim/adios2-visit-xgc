@@ -111,7 +111,7 @@ class avtXGCFileFormat : public avtMTSDFileFormat
     std::map<std::string, adios2::Params> fileVariables, fileAttributes;
     std::map<std::string, std::pair<int,std::string>> meshInfo;
 
-    std::string fileName;
+    std::string fileName, meshName;
     std::string engineType;
 
     bool initialized, haveSepMesh;
