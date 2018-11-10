@@ -671,8 +671,10 @@ avtXGCFileFormat::GetVar(int timestate, const char *varname)
   else if (engineType == "SST")
   {
       adios2::StepStatus status = fileReader.BeginStep(adios2::StepMode::NextAvailable, 0.0f);
-      if (status != adios2::StepStatus::OK)
+      if (status != adios2::StepStatus::OK){
+        fileReader.EndStep();
           return NULL;
+      }
   }
 
   adios2::Variable<double> var = fileIO.InquireVariable<double>(varname);
@@ -685,7 +687,9 @@ avtXGCFileFormat::GetVar(int timestate, const char *varname)
   vtkDoubleArray *arr = vtkDoubleArray::New();
   arr->SetNumberOfTuples(dims[0]*dims[1] * phiMultiplier);
 
-  var.SetStepSelection({timestate, 1});
+  if (engineType == "BP"){
+    var.SetStepSelection({timestate, 1});
+  }
   var.SetSelection(adios2::Box<adios2::Dims>({0,0}, dims));
   fileReader.Get(var, buff, adios2::Mode::Sync);// (double*)arr->GetVoidPointer(0), adios2::Mode::Sync);
 
@@ -701,6 +705,8 @@ avtXGCFileFormat::GetVar(int timestate, const char *varname)
 
   if (engineType == "SST")
       fileReader.EndStep();
+
+  std::cout << "getvar done: " << varname << endl;
 
   return arr;
 }
